@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>がくしゅうクエスト</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="screen-setup" class="screen screen-scroll">
+<h1> がくしゅうクエスト</h1>
+<p>はじめてのセットアップをしよう！</p>
+<div class="text-center" style="margin-top:10px;"><label> 入学した年月日</label><div style="margin-top:6px;"><input type="date" id="setup-date" value="2026-04-01"></div></div>
+<div class="text-center" style="margin-top:10px;"><label> 保護者用パスコード（数字4桁）</label><div style="margin-top:6px;"><input type="tel" id="setup-passcode" value="1234" maxlength="4" pattern="[0-9]*" inputmode="numeric" style="width:120px;font-size:24px;letter-spacing:8px;"></div></div>
+<button class="btn btn-primary" onclick="saveSetup()" style="margin-top:16px;">はじめる！</button>
+</div>
+
+<div id="screen-menu" class="screen screen-scroll">
+<div class="menu-header">
+<h1> がくしゅうクエスト</h1>
+<div class="level-info" id="menu-level-info"> レベル 1</div>
+<div style="font-size:14px;color:#aaa;margin-top:4px;" id="menu-grade-info"></div>
+</div>
+<div style="text-align:center;margin-bottom:6px;">
+<p style="font-size:14px;color:#aaa;margin-bottom:4px;"> 難易度をえらんでね</p>
+<div class="difficulty-row" id="difficulty-selector">
+<button class="difficulty-btn active" data-diff="easy" onclick="selectDifficulty('easy')"> かんたん</button>
+<button class="difficulty-btn" data-diff="normal" onclick="selectDifficulty('normal')"> ふつう</button>
+<button class="difficulty-btn" data-diff="hard" onclick="selectDifficulty('hard')"> むずかしい</button>
+</div>
+</div>
+<p style="font-size:14px;color:#aaa;margin-bottom:6px;"> べんきょうするきょうかをえらぼう！</p>
+<div class="menu-subjects" id="menu-subjects-container"></div>
+<div style="text-align:center;margin-top:8px;">
+<p style="font-size:14px;color:#aaa;margin-bottom:4px;">  デザインテーマ</p>
+<div class="theme-row" id="theme-selector">
+<button class="theme-btn" data-theme="pokemon" onclick="selectTheme('pokemon')">  ポケモン</button>
+<button class="theme-btn" data-theme="bluelock" onclick="selectTheme('bluelock')">  ブルーロック</button>
+</div>
+</div>
+<div class="menu-footer"><button class="btn btn-secondary btn-small" onclick="changeScreen('gate')"> 保護者</button></div>
+</div>
+
+<div id="screen-gate" class="screen">
+<h2> 保護者モード</h2>
+<p style="font-size:14px;color:#aaa;">パスコード（4桁）を入力してください</p>
+<div class="pin-input-area"><div class="pin-digit" id="pin-0"></div><div class="pin-digit" id="pin-1"></div><div class="pin-digit" id="pin-2"></div><div class="pin-digit" id="pin-3"></div></div>
+<p id="pin-error" style="font-size:13px;color:#e74c3c;min-height:20px;"></p>
+<div class="pin-pad">
+<button class="pin-btn" onclick="pinInput('1')">1</button><button class="pin-btn" onclick="pinInput('2')">2</button><button class="pin-btn" onclick="pinInput('3')">3</button>
+<button class="pin-btn" onclick="pinInput('4')">4</button><button class="pin-btn" onclick="pinInput('5')">5</button><button class="pin-btn" onclick="pinInput('6')">6</button>
+<button class="pin-btn" onclick="pinInput('7')">7</button><button class="pin-btn" onclick="pinInput('8')">8</button><button class="pin-btn" onclick="pinInput('9')">9</button>
+<button class="pin-btn pin-btn-clear" onclick="pinClear()">C</button><button class="pin-btn" onclick="pinInput('0')">0</button><button class="pin-btn pin-btn-del" onclick="pinDelete()"> </button>
+</div>
+<button class="btn btn-secondary btn-small" onclick="changeScreen('menu')" style="margin-top:10px;"> もどる</button>
+</div>
+
+<div id="screen-parent" class="screen screen-scroll">
+<h2> 保護者設定</h2>
+<div class="parent-stats"><h3 style="text-align:center;color:#aaa;margin-bottom:8px;"> せいせき</h3><div id="parent-stats-container"></div>
+<div class="stat-row"><span class="stat-label"> スコア</span><span class="stat-value" id="stat-score">0</span></div>
+<div class="stat-row"><span class="stat-label"> レベル</span><span class="stat-value" id="stat-level">1</span></div>
+</div>
+<div class="parent-section"><h3> 入学年月日の変更</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;"><input type="date" id="parent-admission-date"><button class="btn btn-small btn-primary" onclick="updateAdmissionDate()">更新</button></div></div>
+<div class="parent-section"><h3> パスコードの変更</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;"><input type="tel" id="parent-new-passcode" maxlength="4" pattern="[0-9]*" inputmode="numeric" style="width:100px;font-size:20px;letter-spacing:6px;" placeholder="0000"><button class="btn btn-small btn-primary" onclick="updatePasscode()">更新</button></div></div>
+<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center;"><button class="btn btn-danger btn-small" onclick="resetAllData()"> 全データリセット</button><button class="btn btn-secondary btn-small" onclick="changeScreen('menu')"> もどる</button></div>
+</div>
+
+<div id="screen-battle" class="screen">
+<div class="battle-header"><p id="battle-subject-label" style="font-size:14px;color:#aaa;">さんすう</p></div>
+<div class="battle-hp-row">
+<div class="hp-unit" id="player-unit">
+  <span class="char-icon" id="player-icon"> </span>
+  <img class="char-img" id="player-img" style="display:none">
+  <div class="hp-bar-bg"><div class="hp-bar-fill player-hp" id="player-hp-bar" style="width:100%"></div></div>
+  <span class="hp-text" id="player-hp-text">HP: 100</span>
+</div>
+<div style="font-size:24px;"> </div>
+<div class="hp-unit" id="enemy-unit">
+  <span class="char-icon" id="enemy-icon"> </span>
+  <img class="char-img" id="enemy-img" style="display:none">
+  <div class="hp-bar-bg"><div class="hp-bar-fill enemy-hp" id="enemy-hp-bar" style="width:100%"></div></div>
+  <span class="hp-text" id="enemy-hp-text">HP: 200</span>
+</div>
+</div>
+<div class="battle-question" id="battle-question-area"><p id="battle-question-text">もんだいを じゅんびちゅう</p></div>
+<div class="battle-choices" id="battle-choices-area">
+<button class="choice-btn" data-choice="0" onclick="selectAnswer(0)">-</button>
+<button class="choice-btn" data-choice="1" onclick="selectAnswer(1)">-</button>
+<button class="choice-btn" data-choice="2" onclick="selectAnswer(2)">-</button>
+<button class="choice-btn" data-choice="3" onclick="selectAnswer(3)">-</button>
+</div>
+</div>
+
+<div class="battle-result-overlay" id="battle-result-overlay">
+<div class="result-emoji" id="result-emoji"> </div>
+<div class="result-text" id="result-text">しょうり！</div>
+<div class="result-sub" id="result-sub-text"></div>
+<button class="btn btn-primary" onclick="backToMenu()">メニューにもどる</button>
+</div>
+
+<script src="questions_english.js"></script>
+<script src="questions_japanese.js"></script>
+<script src="questions_math.js"></script>
+<script src="questions_science.js"></script>
+<script src="questions_social.js"></script>
+<script src="questions_life.js"></script>
+<script src="questions_moral.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
