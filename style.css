@@ -120,6 +120,7 @@ p{font-size:16px;text-align:center;line-height:1.6}
 .parent-user-stats{font-size:12px;color:#aaa;margin-bottom:4px;display:flex;flex-wrap:wrap;gap:4px}
 .parent-user-stat{display:inline-block;padding:2px 6px;background:rgba(83,52,131,0.3);border-radius:4px}
 .parent-user-detail{font-size:11px;color:#888;margin-bottom:6px}
+.parent-user-badge{display:inline-block;padding:2px 8px;background:#e94560;border-radius:10px;font-size:11px;color:#fff;vertical-align:middle;margin-left:4px}
 .parent-user-actions{display:flex;gap:8px;justify-content:flex-end}
 
 /* ===== 保護者編集画面 ===== */

@@ -1,9 +1,8 @@
 // ===== Supabase 設定 =====
-// TODO: 自分のSupabaseプロジェクトのURLとanonキーに書き換えてください
 const SUPABASE_URL = "https://pzdqplvkceyqulltoorf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_SCk3uMUl2uvlO3kMV9eJXQ_ALuLwOhg";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== テーマ定義 =====
 const THEMES={pokemon:{name:"ポケモン",bg:"url('image/ポケモン_背景.png')",bodyClass:"theme-pokemon"},bluelock:{name:"ブルーロック",bg:"url('image/ブルーロック_背景.png')",bodyClass:"theme-bluelock"}};
@@ -75,34 +74,48 @@ function changeScreen(id){
 
 // 全ユーザー一覧を取得
 async function fetchUsers(){
-  const {data,error}=await supabase.from("users").select("id,name,passcode,created_at").order("created_at",{ascending:true});
+  const {data,error}=await sb.from("users").select("id,name,passcode,is_parent,created_at").order("created_at",{ascending:true});
   if(error){console.error("fetchUsers error:",error);return[]}
   return data||[];
 }
 
 // ユーザーのプロフィールデータを取得
 async function fetchProfile(userId){
-  const {data,error}=await supabase.from("user_profiles").select("*").eq("user_id",userId).single();
+  const {data,error}=await sb.from("user_profiles").select("*").eq("user_id",userId).single();
   if(error){console.error("fetchProfile error:",error);return null}
   return data;
 }
 
 // 新規ユーザー作成
-async function createUser(name,passcode,admissionDate){
+// ユーザー作成画面のデフォルト難易度・デフォルトテーマ選択
+let createDefaultDifficulty="easy";
+let createDefaultTheme="pokemon";
+
+function selectCreateDifficulty(d){
+  createDefaultDifficulty=d;
+  document.querySelectorAll("#create-difficulty-selector .difficulty-btn").forEach(b=>b.classList.toggle("active",b.dataset.diff===d));
+}
+
+function selectCreateTheme(t){
+  createDefaultTheme=t;
+  document.querySelectorAll("#create-theme-selector .theme-btn").forEach(b=>b.classList.toggle("active",b.dataset.theme===t));
+}
+
+async function createUser(name,passcode,admissionDate,isParent,defaultDifficulty,defaultTheme){
   // users テーブルに挿入
-  const {data:userData,error:userError}=await supabase.from("users").insert({
-    name:name,passcode:passcode
+  const {data:userData,error:userError}=await sb.from("users").insert({
+    name:name,passcode:passcode,is_parent:isParent||false
   }).select().single();
   if(userError){console.error("createUser error:",userError);alert("ユーザー作成に失敗しました");return null}
   
-  // user_profiles テーブルに挿入
-  const {error:profileError}=await supabase.from("user_profiles").insert({
+  // user_profiles テーブルに挿入（保護者の場合はadmission_dateをnullに）
+  const {error:profileError}=await sb.from("user_profiles").insert({
     user_id:userData.id,
-    admission_date:admissionDate,
+    admission_date:isParent?null:admissionDate,
     level:1,
     score:0,
-    current_difficulty:"easy",
-    theme:"pokemon",
+    current_difficulty:defaultDifficulty||"easy",
+    theme:defaultTheme||"pokemon",
     stats_math:0,
     stats_japanese:0,
     stats_english:0,
@@ -119,7 +132,7 @@ async function createUser(name,passcode,admissionDate){
 // プロフィールを更新
 async function updateProfile(){
   if(!cu||!st)return;
-  const {error}=await supabase.from("user_profiles").update({
+  const {error}=await sb.from("user_profiles").update({
     level:st.level,
     score:st.score,
     current_difficulty:st.currentDifficulty,
@@ -136,34 +149,10 @@ async function updateProfile(){
   if(error)console.error("updateProfile error:",error);
 }
 
-// パスコードを更新
-async function updatePasscodeInDb(userId,newPasscode){
-  const {error}=await supabase.from("users").update({passcode:newPasscode}).eq("id",userId);
-  if(error){console.error("updatePasscode error:",error);return false}
-  return true;
-}
-
-// admission_date を更新
-async function updateAdmissionDateInDb(userId,newDate){
-  const {error}=await supabase.from("user_profiles").update({admission_date:newDate}).eq("user_id",userId);
-  if(error){console.error("updateAdmissionDate error:",error);return false}
-  return true;
-}
-
 // ユーザー削除
 async function deleteUser(userId){
-  // user_profiles は ON DELETE CASCADE なので users 削除で自動削除
-  const {error}=await supabase.from("users").delete().eq("id",userId);
+  const {error}=await sb.from("users").delete().eq("id",userId);
   if(error){console.error("deleteUser error:",error);return false}
-  return true;
-}
-
-// 全ユーザー削除（リセット）
-async function resetAllUsers(){
-  const {error}=await supabase.from("user_profiles").delete().neq("user_id","00000000-0000-0000-0000-000000000000");
-  if(error){console.error("reset profiles error:",error);return false}
-  const {error:err2}=await supabase.from("users").delete().neq("id","00000000-0000-0000-0000-000000000000");
-  if(err2){console.error("reset users error:",err2);return false}
   return true;
 }
 
@@ -172,13 +161,15 @@ async function resetAllUsers(){
 // ユーザー選択画面を表示
 async function showUserSelect(){
   const users=await fetchUsers();
+  // 子供ユーザーのみ表示（保護者は一覧に表示しない）
+  const children=users.filter(u=>!u.is_parent);
   const container=document.getElementById("user-list-container");
   container.innerHTML="";
   
-  if(users.length===0){
+  if(children.length===0){
     container.innerHTML='<p style="color:#aaa;text-align:center;padding:20px;">ユーザーがいません。新しく作成してください。</p>';
   }else{
-    users.forEach(u=>{
+    children.forEach(u=>{
       const div=document.createElement("div");
       div.className="user-card";
       const dateStr=u.created_at?new Date(u.created_at).toLocaleDateString("ja-JP"):"";
@@ -225,8 +216,10 @@ async function selectUser(user){
   changeScreen("menu");
   updateMenuInfo();
   applyTheme();
-  // selected user name display
   document.getElementById("menu-user-name").textContent=user.name;
+  // 保存されている難易度・テーマをUIに反映
+  document.querySelectorAll("#difficulty-selector .difficulty-btn").forEach(b=>b.classList.toggle("active",b.dataset.diff===st.currentDifficulty));
+  document.querySelectorAll("#theme-selector .theme-btn").forEach(b=>b.classList.toggle("active",b.dataset.theme===st.theme));
 }
 
 // ユーザー作成画面を表示
@@ -234,22 +227,45 @@ function showCreateUser(){
   document.getElementById("create-user-name").value="";
   document.getElementById("create-user-passcode").value="";
   document.getElementById("create-user-date").value="2026-04-01";
+  document.getElementById("create-user-is-parent").checked=false;
+  document.getElementById("create-user-date-group").style.display="block";
   changeScreen("create-user");
+}
+
+// 保護者チェックボックスの表示切替
+function toggleParentField(){
+  const isParent=document.getElementById("create-user-is-parent").checked;
+  const display=isParent?"none":"block";
+  document.getElementById("create-user-date-group").style.display=display;
+  // 保護者アカウント作成時はデフォルト難易度・テーマも非表示に
+  document.getElementById("create-difficulty-selector").parentElement.style.display=display;
+  document.getElementById("create-theme-selector").parentElement.style.display=display;
 }
 
 // ユーザー作成実行
 async function createUserFromForm(){
   const name=document.getElementById("create-user-name").value.trim();
   const passcode=document.getElementById("create-user-passcode").value.trim();
-  const admissionDate=document.getElementById("create-user-date").value;
+  const isParent=document.getElementById("create-user-is-parent").checked;
   
   if(!name){alert("ユーザー名を入力してください");return}
   if(passcode.length!==4||!/^\d{4}$/.test(passcode)){alert("パスコードは数字4桁で入力してください");return}
-  if(!admissionDate){alert("入学年月日を選択してください");return}
   
-  const user=await createUser(name,passcode,admissionDate);
+  let admissionDate=null;
+  if(!isParent){
+    admissionDate=document.getElementById("create-user-date").value;
+    if(!admissionDate){alert("入学年月日を選択してください");return}
+  }
+  
+  const user=await createUser(name,passcode,admissionDate,isParent,createDefaultDifficulty,createDefaultTheme);
   if(user){
-    await selectUser(user);
+    if(isParent){
+      // 保護者の場合はメニューには進まず、ユーザー選択画面に戻る
+      alert("保護者アカウントを作成しました！");
+      showUserSelect();
+    }else{
+      await selectUser(user);
+    }
   }
 }
 
@@ -387,16 +403,16 @@ function updateParentPinDisplay(){
 }
 
 async function parentCheckPin(){
-  // ユーザーのパスコードと一致するかチェック（全ユーザー対象）
+  // パスコードが一致し、かつ is_parent=true のユーザーを検索
   const users=await fetchUsers();
-  const matched=users.find(u=>u.passcode===parentPin);
+  const matched=users.find(u=>u.is_parent===true&&u.passcode===parentPin);
   if(matched){
     parentPin="";
     updateParentPinDisplay();
     document.getElementById("parent-pin-error").textContent="";
     await showParentScreen();
   }else{
-    document.getElementById("parent-pin-error").textContent=" パスコードがちがいます";
+    document.getElementById("parent-pin-error").textContent=" パスコードがちがいます（保護者アカウントのみ）";
     setTimeout(function(){parentPin="";updateParentPinDisplay()},500);
   }
 }
@@ -413,23 +429,22 @@ async function showParentScreen(){
       const div=document.createElement("div");
       div.className="parent-user-card";
       
-      // 各ユーザーのstatsを取得するためにプロフィールを取得
-      supabase.from("user_profiles").select("*").eq("user_id",u.id).single().then(function(profile){
+      sb.from("user_profiles").select("*").eq("user_id",u.id).single().then(function(profile){
         if(profile.data){
           const p=profile.data;
           const statsHtml=Object.keys(SUBJECT_DEFS).map(function(k){
             const stKey="stats_"+k;
             return '<span class="parent-user-stat">'+SUBJECT_DEFS[k].label+':'+(p[stKey]||0)+'</span>';
           }).join(" ");
+          const roleBadge=u.is_parent?'<span class="parent-user-badge">保護者</span>':'';
+          const detailInfo=u.is_parent ? '保護者アカウント' : 'スコア: '+p.score+' | レベル: '+p.level+' | 入学: '+p.admission_date+' | テーマ: '+p.theme;
           div.innerHTML=`
             <div class="parent-user-header">
-              <span class="parent-user-name">${escapeHtml(u.name)}</span>
+              <span class="parent-user-name">${escapeHtml(u.name)} ${roleBadge}</span>
               <span class="parent-user-pass">パスコード: ${u.passcode}</span>
             </div>
-            <div class="parent-user-stats">${statsHtml}</div>
-            <div class="parent-user-detail">
-              スコア: ${p.score} | レベル: ${p.level} | 入学: ${p.admission_date} | テーマ: ${p.theme}
-            </div>
+            <div class="parent-user-stats">${u.is_parent?'':statsHtml}</div>
+            <div class="parent-user-detail">${detailInfo}</div>
             <div class="parent-user-actions">
               <button class="btn btn-small btn-primary" onclick="parentEditUser('${u.id}')">編集</button>
               <button class="btn btn-small btn-danger" onclick="parentDeleteUser('${u.id}','${escapeHtml(u.name)}')">削除</button>
@@ -453,22 +468,50 @@ async function parentDeleteUser(userId,userName){
   }
 }
 
+// 保護者編集画面の難易度・テーマ選択
+let parentEditDifficulty="easy";
+let parentEditTheme="pokemon";
+
+function parentSelectDifficulty(d){
+  parentEditDifficulty=d;
+  document.querySelectorAll("#parent-edit-difficulty-selector .difficulty-btn").forEach(b=>b.classList.toggle("active",b.dataset.diff===d));
+}
+
+function parentSelectTheme(t){
+  parentEditTheme=t;
+  document.querySelectorAll("#parent-edit-theme-selector .theme-btn").forEach(b=>b.classList.toggle("active",b.dataset.theme===t));
+}
+
 let parentEditingUserId=null;
 async function parentEditUser(userId){
   parentEditingUserId=userId;
   const profile=await fetchProfile(userId);
   if(!profile){alert("データ取得エラー");return}
   
+  parentEditDifficulty=profile.current_difficulty||"easy";
+  parentEditTheme=profile.theme||"pokemon";
+  
   document.getElementById("parent-edit-name").value="";
   document.getElementById("parent-edit-passcode").value="";
-  document.getElementById("parent-edit-date").value=profile.admission_date;
+  document.getElementById("parent-edit-date").value=profile.admission_date||"2026-04-01";
   document.getElementById("parent-edit-score").value=profile.score;
   document.getElementById("parent-edit-level").value=profile.level;
-  // ユーザー名・パスコード取得
-  const {data:userData}=await supabase.from("users").select("name,passcode").eq("id",userId).single();
+  
+  // 難易度・テーマの選択状態を反映
+  document.querySelectorAll("#parent-edit-difficulty-selector .difficulty-btn").forEach(b=>b.classList.toggle("active",b.dataset.diff===parentEditDifficulty));
+  document.querySelectorAll("#parent-edit-theme-selector .theme-btn").forEach(b=>b.classList.toggle("active",b.dataset.theme===parentEditTheme));
+  
+  const {data:userData}=await sb.from("users").select("name,passcode,is_parent").eq("id",userId).single();
   if(userData){
     document.getElementById("parent-edit-name").value=userData.name;
     document.getElementById("parent-edit-passcode").value=userData.passcode;
+    // 保護者の場合は入学年月日等を非表示に
+    const isParent=userData.is_parent;
+    document.getElementById("parent-edit-date-group").style.display=isParent?"none":"block";
+    document.getElementById("parent-edit-score-group").style.display=isParent?"none":"block";
+    document.getElementById("parent-edit-level-group").style.display=isParent?"none":"block";
+    document.getElementById("parent-edit-difficulty-group").style.display=isParent?"none":"block";
+    document.getElementById("parent-edit-theme-group").style.display=isParent?"none":"block";
   }
   changeScreen("parent-edit");
 }
@@ -483,30 +526,35 @@ async function parentSaveEdit(){
   
   if(!name){alert("ユーザー名を入力してください");return}
   if(passcode.length!==4||!/^\d{4}$/.test(passcode)){alert("パスコードは数字4桁です");return}
-  if(!date){alert("日付を選択してください");return}
-  if(level<1)level=1;
-  if(score<0)score=0;
   
   // ユーザー名更新
-  const {error:nameErr}=await supabase.from("users").update({name:name,passcode:passcode}).eq("id",userId);
+  const {error:nameErr}=await sb.from("users").update({name:name,passcode:passcode}).eq("id",userId);
   if(nameErr){alert("ユーザー情報の更新に失敗しました");return}
   
-  // プロフィール更新
-  const {error:profErr}=await supabase.from("user_profiles").update({
-    admission_date:date,
-    score:score,
-    level:level
-  }).eq("user_id",userId);
-  if(profErr){alert("プロフィールの更新に失敗しました");return}
-  
-  // 現在選択中のユーザーならstも更新
-  if(cu&&cu.id===userId){
-    st.admissionDate=date;
-    st.score=score;
-    st.level=level;
-    st.passcode=passcode;
-    cu.name=name;
-    document.getElementById("menu-user-name").textContent=name;
+  // プロフィール更新（保護者かどうかで更新内容を分ける）
+  const {data:userData}=await sb.from("users").select("is_parent").eq("id",userId).single();
+  if(userData&&userData.is_parent){
+    const {error:profErr}=await sb.from("user_profiles").update({}).eq("user_id",userId);
+    if(profErr){alert("エラー");return}
+  }else{
+    if(!date){alert("日付を選択してください");return}
+    const {error:profErr}=await sb.from("user_profiles").update({
+      admission_date:date,
+      score:score,
+      level:level,
+      current_difficulty:parentEditDifficulty,
+      theme:parentEditTheme
+    }).eq("user_id",userId);
+    if(profErr){alert("プロフィールの更新に失敗しました");return}
+    
+    if(cu&&cu.id===userId){
+      st.admissionDate=date;
+      st.score=score;
+      st.level=level;
+      st.passcode=passcode;
+      cu.name=name;
+      document.getElementById("menu-user-name").textContent=name;
+    }
   }
   
   alert("保存しました");
@@ -618,7 +666,7 @@ function showBattleResult(type){
     updateProfile();
   }else{
     e.textContent="";
-    t.textContent=" まけちゃった... がんばろう！";
+    t.textContent=" まけちゃった... がんぼろう！";
     s.textContent="つぎはきっとかてるよ！";
   }
   o.classList.add("show");
@@ -640,15 +688,13 @@ function logoutUser(){
 // ===== 初期化 =====
 window.onload=async function(){
   try{
-    // Supabase が正しく読み込まれているか確認
     if(typeof window.supabase==="undefined"||!window.supabase){
       throw new Error("Supabaseクライアントライブラリが読み込まれていません");
     }
     if(!SUPABASE_URL||!SUPABASE_ANON_KEY||SUPABASE_URL.indexOf("your-project-id")>=0||SUPABASE_ANON_KEY.indexOf("your-anon-key")>=0){
       throw new Error("SUPABASE_URL または SUPABASE_ANON_KEY が設定されていません");
     }
-    // 接続テスト（usersテーブルにアクセスできるか確認）
-    const {error:testErr}=await supabase.from("users").select("count",{count:"exact",head:true});
+    const {error:testErr}=await sb.from("users").select("count",{count:"exact",head:true});
     if(testErr){
       console.error("Supabase接続テスト失敗:",testErr);
       throw new Error("Supabaseに接続できません: "+testErr.message);
@@ -659,7 +705,7 @@ window.onload=async function(){
     document.body.innerHTML='<div style="padding:40px;text-align:center;font-size:18px;color:#fff;background:#1a1a2e;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;">'+
       '<h1 style="color:#e94560;margin-bottom:16px;">⚠️ エラー</h1>'+
       '<p style="color:#aaa;margin-bottom:12px;">'+escapeHtml(e.message)+'</p>'+
-      '<p style="color:#888;font-size:14px;margin-bottom:20px;">app.js の Supabase設定を確認するか、画面をリロードしてください。</p>'+
+      '<p style="color:#888;font-size:14px;margin-bottom:20px;">画面をリロードしてください。</p>'+
       '<button class="btn btn-primary" onclick="location.reload()" style="min-width:160px;">リロード</button>'+
       '</div>';
   }
