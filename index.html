@@ -7,17 +7,44 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="screen-setup" class="screen screen-scroll">
+
+<!-- ===== ユーザー選択画面 ===== -->
+<div id="screen-user-select" class="screen screen-scroll">
 <h1> がくしゅうクエスト</h1>
-<p>はじめてのセットアップをしよう！</p>
-<div class="text-center" style="margin-top:10px;"><label> 入学した年月日</label><div style="margin-top:6px;"><input type="date" id="setup-date" value="2026-04-01"></div></div>
-<div class="text-center" style="margin-top:10px;"><label> 保護者用パスコード（数字4桁）</label><div style="margin-top:6px;"><input type="tel" id="setup-passcode" value="1234" maxlength="4" pattern="[0-9]*" inputmode="numeric" style="width:120px;font-size:24px;letter-spacing:8px;"></div></div>
-<button class="btn btn-primary" onclick="saveSetup()" style="margin-top:16px;">はじめる！</button>
+<p style="font-size:14px;color:#aaa;margin-bottom:8px;">ユーザーをえらんでね</p>
+<div id="user-list-container" style="width:100%;max-width:340px;"></div>
+<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center;">
+<button class="btn btn-primary" onclick="showCreateUser()"> あたらしいユーザー</button>
+<button class="btn btn-secondary btn-small" onclick="parentShowGate()"> 保護者</button>
+</div>
 </div>
 
+<!-- ===== ユーザー作成画面 ===== -->
+<div id="screen-create-user" class="screen screen-scroll">
+<h2> あたらしいユーザー</h2>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> ユーザー名</label>
+<div style="margin-top:6px;"><input type="text" id="create-user-name" maxlength="20" style="width:220px;font-size:20px;text-align:center;"></div>
+</div>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> 保護者用パスコード（数字4桁）</label>
+<div style="margin-top:6px;"><input type="tel" id="create-user-passcode" maxlength="4" pattern="[0-9]*" inputmode="numeric" style="width:120px;font-size:24px;letter-spacing:8px;"></div>
+</div>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> 入学した年月日</label>
+<div style="margin-top:6px;"><input type="date" id="create-user-date" value="2026-04-01"></div>
+</div>
+<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center;">
+<button class="btn btn-primary" onclick="createUserFromForm()"> つくる！</button>
+<button class="btn btn-secondary btn-small" onclick="showUserSelect()"> もどる</button>
+</div>
+</div>
+
+<!-- ===== メニュー画面 ===== -->
 <div id="screen-menu" class="screen screen-scroll">
 <div class="menu-header">
 <h1> がくしゅうクエスト</h1>
+<div style="font-size:16px;color:#f1c40f;margin-top:4px;" id="menu-user-name"></div>
 <div class="level-info" id="menu-level-info"> レベル 1</div>
 <div style="font-size:14px;color:#aaa;margin-top:4px;" id="menu-grade-info"></div>
 </div>
@@ -38,34 +65,65 @@
 <button class="theme-btn" data-theme="bluelock" onclick="selectTheme('bluelock')">  ブルーロック</button>
 </div>
 </div>
-<div class="menu-footer"><button class="btn btn-secondary btn-small" onclick="changeScreen('gate')"> 保護者</button></div>
+<div class="menu-footer">
+<button class="btn btn-secondary btn-small" onclick="parentShowGate()"> 保護者</button>
+<button class="btn btn-secondary btn-small" onclick="logoutUser()"> ユーザー切替</button>
+</div>
 </div>
 
-<div id="screen-gate" class="screen">
+<!-- ===== 保護者ゲート画面 ===== -->
+<div id="screen-parent-gate" class="screen">
 <h2> 保護者モード</h2>
 <p style="font-size:14px;color:#aaa;">パスコード（4桁）を入力してください</p>
-<div class="pin-input-area"><div class="pin-digit" id="pin-0"></div><div class="pin-digit" id="pin-1"></div><div class="pin-digit" id="pin-2"></div><div class="pin-digit" id="pin-3"></div></div>
-<p id="pin-error" style="font-size:13px;color:#e74c3c;min-height:20px;"></p>
+<div class="pin-input-area"><div class="pin-digit" id="parent-pin-0"></div><div class="pin-digit" id="parent-pin-1"></div><div class="pin-digit" id="parent-pin-2"></div><div class="pin-digit" id="parent-pin-3"></div></div>
+<p id="parent-pin-error" style="font-size:13px;color:#e74c3c;min-height:20px;"></p>
 <div class="pin-pad">
-<button class="pin-btn" onclick="pinInput('1')">1</button><button class="pin-btn" onclick="pinInput('2')">2</button><button class="pin-btn" onclick="pinInput('3')">3</button>
-<button class="pin-btn" onclick="pinInput('4')">4</button><button class="pin-btn" onclick="pinInput('5')">5</button><button class="pin-btn" onclick="pinInput('6')">6</button>
-<button class="pin-btn" onclick="pinInput('7')">7</button><button class="pin-btn" onclick="pinInput('8')">8</button><button class="pin-btn" onclick="pinInput('9')">9</button>
-<button class="pin-btn pin-btn-clear" onclick="pinClear()">C</button><button class="pin-btn" onclick="pinInput('0')">0</button><button class="pin-btn pin-btn-del" onclick="pinDelete()"> </button>
+<button class="pin-btn" onclick="parentPinInput('1')">1</button><button class="pin-btn" onclick="parentPinInput('2')">2</button><button class="pin-btn" onclick="parentPinInput('3')">3</button>
+<button class="pin-btn" onclick="parentPinInput('4')">4</button><button class="pin-btn" onclick="parentPinInput('5')">5</button><button class="pin-btn" onclick="parentPinInput('6')">6</button>
+<button class="pin-btn" onclick="parentPinInput('7')">7</button><button class="pin-btn" onclick="parentPinInput('8')">8</button><button class="pin-btn" onclick="parentPinInput('9')">9</button>
+<button class="pin-btn pin-btn-clear" onclick="parentPinClear()">C</button><button class="pin-btn" onclick="parentPinInput('0')">0</button><button class="pin-btn pin-btn-del" onclick="parentPinDelete()"> </button>
 </div>
-<button class="btn btn-secondary btn-small" onclick="changeScreen('menu')" style="margin-top:10px;"> もどる</button>
+<button class="btn btn-secondary btn-small" onclick="showUserSelect()" style="margin-top:10px;"> もどる</button>
 </div>
 
-<div id="screen-parent" class="screen screen-scroll">
+<!-- ===== 保護者画面（ユーザー一覧） ===== -->
+<div id="screen-parent-screen" class="screen screen-scroll">
 <h2> 保護者設定</h2>
-<div class="parent-stats"><h3 style="text-align:center;color:#aaa;margin-bottom:8px;"> せいせき</h3><div id="parent-stats-container"></div>
-<div class="stat-row"><span class="stat-label"> スコア</span><span class="stat-value" id="stat-score">0</span></div>
-<div class="stat-row"><span class="stat-label"> レベル</span><span class="stat-value" id="stat-level">1</span></div>
-</div>
-<div class="parent-section"><h3> 入学年月日の変更</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;"><input type="date" id="parent-admission-date"><button class="btn btn-small btn-primary" onclick="updateAdmissionDate()">更新</button></div></div>
-<div class="parent-section"><h3> パスコードの変更</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;"><input type="tel" id="parent-new-passcode" maxlength="4" pattern="[0-9]*" inputmode="numeric" style="width:100px;font-size:20px;letter-spacing:6px;" placeholder="0000"><button class="btn btn-small btn-primary" onclick="updatePasscode()">更新</button></div></div>
-<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center;"><button class="btn btn-danger btn-small" onclick="resetAllData()"> 全データリセット</button><button class="btn btn-secondary btn-small" onclick="changeScreen('menu')"> もどる</button></div>
+<p style="font-size:14px;color:#aaa;margin-bottom:8px;">ユーザー一覧</p>
+<div id="parent-users-container" style="width:100%;max-width:380px;"></div>
+<button class="btn btn-secondary btn-small" onclick="showUserSelect()" style="margin-top:12px;"> もどる</button>
 </div>
 
+<!-- ===== 保護者編集画面 ===== -->
+<div id="screen-parent-edit" class="screen screen-scroll">
+<h2> ユーザー編集</h2>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> ユーザー名</label>
+<div style="margin-top:6px;"><input type="text" id="parent-edit-name" maxlength="20" style="width:220px;font-size:20px;text-align:center;"></div>
+</div>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> パスコード（数字4桁）</label>
+<div style="margin-top:6px;"><input type="tel" id="parent-edit-passcode" maxlength="4" pattern="[0-9]*" inputmode="numeric" style="width:120px;font-size:24px;letter-spacing:8px;"></div>
+</div>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> 入学年月日</label>
+<div style="margin-top:6px;"><input type="date" id="parent-edit-date"></div>
+</div>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> スコア</label>
+<div style="margin-top:6px;"><input type="number" id="parent-edit-score" min="0" style="width:100px;font-size:20px;text-align:center;"></div>
+</div>
+<div class="text-center" style="margin-top:10px;">
+<label style="font-size:14px;color:#aaa;"> レベル</label>
+<div style="margin-top:6px;"><input type="number" id="parent-edit-level" min="1" style="width:100px;font-size:20px;text-align:center;"></div>
+</div>
+<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center;">
+<button class="btn btn-primary" onclick="parentSaveEdit()"> 保存</button>
+<button class="btn btn-secondary btn-small" onclick="parentCancelEdit()"> キャンセル</button>
+</div>
+</div>
+
+<!-- ===== バトル画面 ===== -->
 <div id="screen-battle" class="screen">
 <div class="battle-header"><p id="battle-subject-label" style="font-size:14px;color:#aaa;">さんすう</p></div>
 <div class="battle-hp-row">
@@ -98,6 +156,9 @@
 <div class="result-sub" id="result-sub-text"></div>
 <button class="btn btn-primary" onclick="backToMenu()">メニューにもどる</button>
 </div>
+
+<!-- Supabase JS SDK -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <script src="questions_english.js"></script>
 <script src="questions_japanese.js"></script>
