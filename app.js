@@ -638,11 +638,29 @@ function logoutUser(){
 }
 
 // ===== 初期化 =====
-window.onload=function(){
-  // Supabase が正しく読み込まれているか確認
-  if(typeof supabase==="undefined"||!supabase){
-    document.body.innerHTML='<div style="padding:40px;text-align:center;font-size:18px;"><h1>⚠️ Supabase接続エラー</h1><p style="margin-top:20px;">Supabaseクライアントが読み込まれていません。</p><p>app.js の SUPABASE_URL と SUPABASE_ANON_KEY を設定してください。</p></div>';
-    return;
+window.onload=async function(){
+  try{
+    // Supabase が正しく読み込まれているか確認
+    if(typeof window.supabase==="undefined"||!window.supabase){
+      throw new Error("Supabaseクライアントライブラリが読み込まれていません");
+    }
+    if(!SUPABASE_URL||!SUPABASE_ANON_KEY||SUPABASE_URL.indexOf("your-project-id")>=0||SUPABASE_ANON_KEY.indexOf("your-anon-key")>=0){
+      throw new Error("SUPABASE_URL または SUPABASE_ANON_KEY が設定されていません");
+    }
+    // 接続テスト（usersテーブルにアクセスできるか確認）
+    const {error:testErr}=await supabase.from("users").select("count",{count:"exact",head:true});
+    if(testErr){
+      console.error("Supabase接続テスト失敗:",testErr);
+      throw new Error("Supabaseに接続できません: "+testErr.message);
+    }
+    await showUserSelect();
+  }catch(e){
+    console.error("初期化エラー:",e);
+    document.body.innerHTML='<div style="padding:40px;text-align:center;font-size:18px;color:#fff;background:#1a1a2e;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;">'+
+      '<h1 style="color:#e94560;margin-bottom:16px;">⚠️ エラー</h1>'+
+      '<p style="color:#aaa;margin-bottom:12px;">'+escapeHtml(e.message)+'</p>'+
+      '<p style="color:#888;font-size:14px;margin-bottom:20px;">app.js の Supabase設定を確認するか、画面をリロードしてください。</p>'+
+      '<button class="btn btn-primary" onclick="location.reload()" style="min-width:160px;">リロード</button>'+
+      '</div>';
   }
-  showUserSelect();
 };
