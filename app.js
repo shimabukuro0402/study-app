@@ -90,7 +90,16 @@ function changeScreen(id){
 // Google OAuth ログイン
 async function loginWithGoogle(){
   try{
-    const redirectUrl=window.location.origin;
+    // 末尾にスラッシュを確保
+    let redirectUrl=window.location.origin;
+    if(!redirectUrl.endsWith("/")){
+      redirectUrl+="/";
+    }
+    // パスが含まれている場合はindex.htmlを追加
+    if(window.location.pathname && window.location.pathname!=="/"){
+      redirectUrl+="index.html";
+    }
+    
     console.log("Google OAuth redirect URL:",redirectUrl);
     const {data,error}=await sb.auth.signInWithOAuth({
       provider:"google",
