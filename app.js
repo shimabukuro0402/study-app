@@ -177,7 +177,14 @@ async function handleAuthCallback(){
 function showPasskeyIfNeeded(){
   const hasPasskey=localStorage.getItem("passkey_creds");
   if(!hasPasskey||JSON.parse(hasPasskey).length===0){
-    setTimeout(function(){showPasskeyModal()},1000);
+    // セッションが確立されてから表示するため、さらに遅延
+    setTimeout(function(){
+      sb.auth.getSession().then(function(result){
+        if(result.data.session){
+          showPasskeyModal();
+        }
+      });
+    },2000);
   }
 }
 
@@ -274,28 +281,42 @@ function arrayBufferToBase64(buf){
 
 async function loginWithPasskey(){
   try{
-    if(!window.PublicKeyCredential){alert("お使いのブラウザはパスキーに対応していません");return}
+    if(!window.PublicKeyCredential){
+      alert("お使いのブラウザはパスキーに対応していません");
+      return;
+    }
+    
     const creds=JSON.parse(localStorage.getItem("passkey_creds")||"[]");
-    if(creds.length===0){alert("パスキーが登録されていません。先にGoogleログインを行ってください。");return}
+    if(creds.length===0){
+      alert("パスキーが登録されていません。\n先にGoogleログインを行って、パスキーを登録してください。");
+      return;
+    }
+    
     const challenge=new Uint8Array(32);
     crypto.getRandomValues(challenge);
+    
     const credential=await navigator.credentials.get({
       publicKey:{
         challenge:challenge,
         rpId:window.location.hostname,
-        allowCredentials:creds.map(c=>({id:Uint8Array.from(atob(c.rawId),c=>c.charCodeAt(0)),type:c.type})),
-        userVerification:"required",timeout:60000
+        allowCredentials:creds.map(c=>({
+          id:Uint8Array.from(atob(c.rawId),c=>c.charCodeAt(0)),
+          type:c.type
+        })),
+        userVerification:"required",
+        timeout:60000
       }
     });
+    
     if(credential){
-      const {data:{session}}=await sb.auth.getSession();
-      if(session){await handleAuthCallback()}
-      else{alert("セッションが切れています。Googleログインからやり直してください。")}
+      // パスキー認証成功後、自動的にGoogleログインを実行
+      console.log("Passkey authentication successful, redirecting to Google OAuth...");
+      await loginWithGoogle();
     }
   }catch(e){
     if(e.name!=="AbortError"&&e.name!=="NotAllowedError"){
       console.error("Passkey login error:",e);
-      alert("パスキーログインに失敗しました");
+      alert("パスキーログインに失敗しました: "+e.message);
     }
   }
 }
