@@ -28,7 +28,12 @@ p{font-size:16px;text-align:center;line-height:1.6}
 .btn-secondary{background:#533483}
 .btn-success{background:#0f3460}
 .btn-danger{background:#c0392b}
-.btn-small{padding:10px 20px;font-size:14px;min-width:100px}
+.btn-small{padding:8px 16px;font-size:14px;min-width:auto}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.2)}
+
+/* モーダル */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-content{background:#16213e;border-radius:16px;padding:24px;max-width:340px;width:90%;text-align:center;border:1px solid rgba(255,255,255,.1)}
 #screen-setup input{padding:12px 16px;border-radius:8px;border:2px solid #533483;font-size:18px;width:220px;text-align:center;background:#16213e;color:#fff;outline:none}
 #screen-setup input:focus{border-color:#e94560}
 #screen-setup label{font-size:14px;color:#aaa;margin-bottom:4px}
