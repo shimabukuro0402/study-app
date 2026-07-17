@@ -90,17 +90,26 @@ function changeScreen(id){
 // Google OAuth ログイン
 async function loginWithGoogle(){
   try{
-    // 末尾にスラッシュを確保
-    let redirectUrl=window.location.origin;
+    // 現在のhrefからoriginを除いたパスを取得
+    let redirectUrl=window.location.href;
+    
+    // クエリパラメータとハッシュを除去
+    const url=new URL(redirectUrl);
+    url.search="";
+    url.hash="";
+    redirectUrl=url.toString();
+    
+    // 末尾が/でない場合は/を追加
     if(!redirectUrl.endsWith("/")){
       redirectUrl+="/";
     }
-    // パスが含まれている場合はindex.htmlを追加
-    if(window.location.pathname && window.location.pathname!=="/"){
-      redirectUrl+="index.html";
-    }
+    
+    // index.htmlを追加
+    redirectUrl+="index.html";
     
     console.log("Google OAuth redirect URL:",redirectUrl);
+    console.log("Current href:",window.location.href);
+    
     const {data,error}=await sb.auth.signInWithOAuth({
       provider:"google",
       options:{redirectTo:redirectUrl}
